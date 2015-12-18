@@ -3,7 +3,7 @@ package io.github.unn4m3d.xmml;
 import com.googlecode.lanterna.TerminalFacade;
 import com.googlecode.lanterna.gui.*;
 import com.googlecode.lanterna.input.Key;
-import com.googlecode.lanterna.screen.Screen;
+import com.googlecode.lanterna.gui.component.*;
 
 import net.launcher.*;
 

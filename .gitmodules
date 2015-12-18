@@ -1,0 +1,3 @@
+[submodule "minml"]
+	path = minml
+	url = https://github.com/unn4m3d/minml

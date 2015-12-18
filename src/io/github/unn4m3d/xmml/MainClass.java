@@ -12,9 +12,10 @@ public class MainClass {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		//System.out.println("Launch");
 		try {
 
-			String jarpath = MainClass.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
+			String jarpath = Launcher.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
 			int memory = (int)Config.get("memory", 1024);
 			
 			ArrayList<String> params = new ArrayList<String>();

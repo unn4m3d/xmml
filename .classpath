@@ -2,6 +2,7 @@
 <classpath>
 	<classpathentry kind="src" path="minml/src"/>
 	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="lanterna/src/main/java"/>
 	<classpathentry kind="lib" path="minml/lib/json-simple-1.1.1.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="output" path="minml/bin"/>

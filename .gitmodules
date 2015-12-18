@@ -4,3 +4,4 @@
 [submodule "lanterna"]
 	path = lanterna
 	url = https://code.google.com/p/lanterna/
+	branch = release/2.1

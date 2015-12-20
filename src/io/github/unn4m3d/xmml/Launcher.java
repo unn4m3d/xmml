@@ -1,10 +1,16 @@
 package io.github.unn4m3d.xmml;
 
+import java.io.IOException;
+import java.net.MalformedURLException;
 import java.util.ArrayList;
+
+import org.json.simple.JSONObject;
+import org.json.simple.parser.ParseException;
 
 import com.googlecode.lanterna.TerminalFacade;
 import com.googlecode.lanterna.gui.*;
 import com.googlecode.lanterna.input.Key;
+import com.googlecode.lanterna.terminal.Terminal.Color;
 import com.googlecode.lanterna.gui.component.*;
 import com.googlecode.lanterna.gui.dialog.*;
 import com.googlecode.lanterna.gui.layout.LayoutManager;
@@ -22,6 +28,7 @@ public class Launcher extends Window {
 	protected PasswordBox passField;
 	protected RadioCheckBoxList servers;
 	protected int serverIndex = 0;
+	protected Label status;
 	/**
 	 * @param args
 	 */
@@ -42,7 +49,8 @@ public class Launcher extends Window {
 		super(Settings.title);
 		//Set up login form
 		this.addComponent(new Label("Press Esc or Ctrl-C to quit"), new LayoutParameter(""));
-		
+		status = new Label("...");
+		this.addComponent(status);
 		Panel mainpanel = new Panel(new Border.Invisible(),Panel.Orientation.HORISONTAL);
 		
 		Panel fields = new Panel("Login Form", Panel.Orientation.VERTICAL);
@@ -84,6 +92,32 @@ public class Launcher extends Window {
 		}),LinearLayout.GROWS_HORIZONTALLY);
 		
 		actions.addComponent(new Button("Login",new Action(){
+
+			@Override
+			public void doAction() {
+				JSONObject a;
+				try {
+					a = Actions.auth(loginField.getText(), passField.getText());
+					status.setText((String) a.get("text"));
+					if((boolean) a.get("error") == true)
+						status.setTextColor(Color.RED);
+					else
+						status.setTextColor(Color.GREEN);
+				} catch (MalformedURLException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (ParseException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+			
+		}),LinearLayout.GROWS_HORIZONTALLY);
+		
+		actions.addComponent(new Button("Settings",new Action(){
 
 			@Override
 			public void doAction() {

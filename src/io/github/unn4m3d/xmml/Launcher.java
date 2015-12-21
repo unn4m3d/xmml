@@ -1,14 +1,20 @@
 package io.github.unn4m3d.xmml;
 
+import io.github.unn4m3d.xmml.files.Guard;
+
+import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
+import java.util.Formatter;
 
+import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.ParseException;
 
 import com.googlecode.lanterna.TerminalFacade;
 import com.googlecode.lanterna.gui.*;
+import com.googlecode.lanterna.gui.Component.Alignment;
 import com.googlecode.lanterna.input.Key;
 import com.googlecode.lanterna.terminal.Terminal.Color;
 import com.googlecode.lanterna.gui.component.*;
@@ -19,6 +25,9 @@ import com.googlecode.lanterna.gui.layout.LinearLayout;
 
 import net.launcher.*;
 import net.launcher.components.*;
+import net.launcher.utils.ActionListener;
+import net.launcher.utils.ClientUtils;
+import net.launcher.utils.FileDownloader;
 
 public class Launcher extends Window {
 
@@ -29,6 +38,9 @@ public class Launcher extends Window {
 	protected RadioCheckBoxList servers;
 	protected int serverIndex = 0;
 	protected Label status;
+	protected ProgressBar updateSt;
+	protected Label progress;
+	//protected ProgressBar currUpdateSt;
 	/**
 	 * @param args
 	 */
@@ -51,7 +63,7 @@ public class Launcher extends Window {
 		this.addComponent(new Label("Press Esc or Ctrl-C to quit"), new LayoutParameter(""));
 		status = new Label("...");
 		this.addComponent(status);
-		Panel mainpanel = new Panel(new Border.Invisible(),Panel.Orientation.HORISONTAL);
+		final Panel mainpanel = new Panel(new Border.Invisible(),Panel.Orientation.HORISONTAL);
 		
 		Panel fields = new Panel("Login Form", Panel.Orientation.VERTICAL);
 		
@@ -91,11 +103,15 @@ public class Launcher extends Window {
 			
 		}),LinearLayout.GROWS_HORIZONTALLY);
 		
+		progress = new Label("...");
+		
+		final Panel updpanel = new Panel(new Border.Invisible(),Panel.Orientation.HORISONTAL);
+		
 		actions.addComponent(new Button("Login",new Action(){
 
 			@Override
 			public void doAction() {
-				JSONObject a;
+				final JSONObject a;
 				try {
 					a = Actions.auth(loginField.getText(), passField.getText());
 					status.setText((String) a.get("text"));
@@ -103,35 +119,137 @@ public class Launcher extends Window {
 						status.setTextColor(Color.RED);
 					else
 						status.setTextColor(Color.GREEN);
-				} catch (MalformedURLException e) {
+					
+					JSONArray fs = (JSONArray)a.get("files");
+					
+					String hash = "";
+					
+					for(Object o : fs){
+						if(((String)((JSONObject)o).get("path")).matches("minecraft\\.jar"))
+							hash = ((String)((JSONObject)o).get("md5"));
+					}
+					
+					final boolean dzip = !Actions.checkMods((JSONArray) a.get("files"));
+					final boolean djar = !(new File(ClientUtils.getMcDir().getAbsolutePath(),"bin/minecraft.jar").exists()
+							&& Guard.getMD5(new File(ClientUtils.getMcDir(),"bin/minecraft.jar").getCanonicalPath()) == hash &&
+							hash != "");
+					if(dzip){
+						final Thread t = new Thread(){
+							public void run(){
+								final Thread th = this;
+								Button b = new Button("Cancel",new Action(){
+
+									@Override
+									public void doAction() {
+										// TODO Auto-generated method stub
+										th.interrupt();
+										updpanel.setVisible(false);
+									}
+									
+								});
+								updpanel.addComponent(b);
+								try {
+									
+									String in = "",out = "";
+									if(dzip){
+										Formatter f = new Formatter();
+										in = f.format(
+												"%s/clients/%s/client.zip",
+												Settings.webpath,
+												TempSettings.client.getName()
+										).toString();
+										
+										out = new File(f.format(
+												"%s/temp/client.zip",
+												ClientUtils.getMcDir()
+										).toString()).getCanonicalPath();
+										
+										f.close();
+									}else if(djar){
+										Formatter f = new Formatter();
+										in = f.format(
+												"%s/clients/%s/bin/minecraft.jar",
+												Settings.webpath,
+												TempSettings.client.getName()
+										).toString();
+										
+										out = new File(f.format(
+												"%s/bin/minecraft.jar",
+												ClientUtils.getMcDir()
+										).toString()).getCanonicalPath();
+										
+										f.close();
+									}
+									
+									if(dzip || djar){
+										final FileDownloader f = new FileDownloader(in,out);
+									
+										f.addUpdateListener(new ActionListener(){
+											public void update(Object o){
+												updateSt.setProgress((long)o/f.size);
+												progress.setText(String.valueOf(o) + 
+													"/" + f.size + " bytes"
+												);
+											}
+										});
+										
+									}
+									new Game(a);
+								} catch (IOException e) {
+									// TODO Auto-generated catch block
+									e.printStackTrace();
+									status.setText(e.getMessage());
+									status.setTextColor(Color.RED);
+								}
+							}
+						};
+						t.setName("Updater thread");
+						t.start();
+					}
+					
+				} catch (Exception e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
-				} catch (ParseException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+					status.setText(e.getMessage());
+					status.setTextColor(Color.RED);
 				}
 			}
 			
 		}),LinearLayout.GROWS_HORIZONTALLY);
 		
-		actions.addComponent(new Button("Settings",new Action(){
+		//Settings panel
+		
+		
+		/*actions.addComponent(new Button("Settings",new Action(){
 
 			@Override
 			public void doAction() {
 				// TODO Auto-generated method stub
-				
+				mainpanel.setVisible(false);
+				updpanel.setVisible(true);
+				//s.getActiveWindow().notify();
 			}
 			
-		}),LinearLayout.GROWS_HORIZONTALLY);
+		}),LinearLayout.GROWS_HORIZONTALLY);*/
 		
 		
 		fields.addComponent(sp,LinearLayout.MAXIMIZES_HORIZONTALLY);
 		mainpanel.addComponent(fields);
 		mainpanel.addComponent(actions);
+		
+		updateSt = new ProgressBar(32);
+		updateSt.setProgress(0.0);
+		
+		updpanel.addComponent(new Label("Update state :"));
+		
+		updpanel.addComponent(updateSt);
+		
+		updpanel.addComponent(progress);
+		
 		this.addComponent(mainpanel);
+		mainpanel.addComponent(updpanel);
+		updpanel.setVisible(false);
+		updpanel.setAlignment(Alignment.TOP_LEFT);
 		listenerThread = new Thread(){
 			public void run(){
 				//System.out.println("KL Started!");

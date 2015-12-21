@@ -7,6 +7,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import io.github.unn4m3d.xmml.files.Guard;
@@ -51,11 +52,17 @@ public class Actions {
 				continue;
 			}
 			
+			if(!new File(ClientUtils.getMcDir(),path).exists()) return false;
 			if(!local.containsKey(path) || Guard.getMD5(local.get(path).getAbsolutePath()) != (String)obj.get("md5")) return false;
 			
+				try{
+					local.remove(path);
+				}catch(Exception e){e.printStackTrace();}
+			}
+		for(Entry<String,File> e : local.entrySet()){
 			try{
-				local.remove(path);
-			}catch(Exception e){e.printStackTrace();}
+				if(e.getValue().isDirectory()) local.remove(e.getKey());
+			}catch(Exception ex){ex.printStackTrace();}
 		}
 		return (local.size() <= 0);
 	}

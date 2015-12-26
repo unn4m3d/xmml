@@ -1,6 +1,7 @@
 package io.github.unn4m3d.xmml;
 
 import io.github.unn4m3d.xmml.files.Guard;
+import io.github.unn4m3d.xmml.files.ZipUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,6 +30,8 @@ import net.launcher.utils.ActionListener;
 import net.launcher.utils.ClientUtils;
 import net.launcher.utils.FileDownloader;
 
+import io.github.unn4m3d.xmml.Misc;
+
 public class Launcher extends Window {
 
 	protected Thread listenerThread;
@@ -45,13 +48,20 @@ public class Launcher extends Window {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		TempSettings.client = Settings.servers[0];
+		try {
+			Log.send(ClientUtils.getMcDir().getCanonicalPath());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		final GUIScreen s = TerminalFacade.createGUIScreen();
 		Launcher l = new Launcher(s);
 		s.getScreen().startScreen();
 		s.showWindow(l, GUIScreen.Position.FULL_SCREEN);
 		try {
 			l.listenerThread.join();
-		} catch (InterruptedException e) {
+		} catch (Throwable e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -111,28 +121,33 @@ public class Launcher extends Window {
 
 			@Override
 			public void doAction() {
+				Log.send("LOGIN");
 				final JSONObject a;
 				try {
 					a = Actions.auth(loginField.getText(), passField.getText());
 					status.setText((String) a.get("text"));
-					if((boolean) a.get("error") == true)
+					if((boolean) a.get("error") == true){
 						status.setTextColor(Color.RED);
+						return;
+					}
 					else
 						status.setTextColor(Color.GREEN);
+					Log.send(a.toJSONString());
 					
 					JSONArray fs = (JSONArray)a.get("files");
 					
 					String hash = "";
 					
-					for(Object o : fs){
+					for(int i = 0; i < fs.size(); i++){
+						Object o = fs.get(i);
 						if(((String)((JSONObject)o).get("path")).matches("minecraft\\.jar"))
 							hash = ((String)((JSONObject)o).get("md5"));
 					}
 					
-					final boolean dzip = !Actions.checkMods((JSONArray) a.get("files"));
+					final boolean dzip = !(Actions.checkMods((JSONArray) a.get("files")));
 					final boolean djar = !(new File(ClientUtils.getMcDir().getAbsolutePath(),"bin/minecraft.jar").exists()
 							&& Guard.getMD5(new File(ClientUtils.getMcDir(),"bin/minecraft.jar").getCanonicalPath()) == hash &&
-							hash != "");
+							hash != "");					
 					if(dzip){
 						final Thread t = new Thread(){
 							public void run(){
@@ -149,7 +164,7 @@ public class Launcher extends Window {
 								});
 								updpanel.addComponent(b);
 								try {
-									
+									new File(ClientUtils.getMcDir(),"temp").mkdirs();
 									String in = "",out = "";
 									if(dzip){
 										Formatter f = new Formatter();
@@ -159,12 +174,15 @@ public class Launcher extends Window {
 												TempSettings.client.getName()
 										).toString();
 										
-										out = new File(f.format(
+										f.close();
+										f = new Formatter();
+										out = /*new File*/(f.format(
 												"%s/temp/client.zip",
 												ClientUtils.getMcDir()
-										).toString()).getCanonicalPath();
+										).toString())/*.getCanonicalPath()*/;
 										
 										f.close();
+										
 									}else if(djar){
 										Formatter f = new Formatter();
 										in = f.format(
@@ -173,10 +191,13 @@ public class Launcher extends Window {
 												TempSettings.client.getName()
 										).toString();
 										
-										out = new File(f.format(
+										f.close();
+										f = new Formatter();
+										
+										out = (f.format(
 												"%s/bin/minecraft.jar",
 												ClientUtils.getMcDir()
-										).toString()).getCanonicalPath();
+										).toString());
 										
 										f.close();
 									}
@@ -186,19 +207,31 @@ public class Launcher extends Window {
 									
 										f.addUpdateListener(new ActionListener(){
 											public void update(Object o){
-												updateSt.setProgress((long)o/f.size);
-												progress.setText(String.valueOf(o) + 
-													"/" + f.size + " bytes"
+												//updateSt.setProgress((long)o/f.size);
+												status.setText(Misc.long2fsize((long)o) + 
+													"/" + Misc.long2fsize(f.size) + " bytes"
 												);
+												//System.out.println((long)o);
 											}
 										});
-										
+										f.start();
+										if(dzip){
+											ZipUtils.unzip(ClientUtils.getMcDir().getCanonicalPath(), new File(ClientUtils.getMcDir(),"temp/client.zip").getCanonicalPath());
+										}
 									}
+									status.setText("Launching...");
+									ClientUtils.updateURLs();
 									new Game(a);
-								} catch (IOException e) {
+									status.setText("OK!");
+								} catch ( Exception e) {
 									// TODO Auto-generated catch block
 									e.printStackTrace();
-									status.setText(e.getMessage());
+									//status.setText(e.getMessage());
+									status.setTextColor(Color.RED);
+									th.interrupt();
+								} catch (Throwable e) {
+									e.printStackTrace();
+									status.setText(e.toString());
 									status.setTextColor(Color.RED);
 								}
 							}
@@ -206,11 +239,21 @@ public class Launcher extends Window {
 						t.setName("Updater thread");
 						t.start();
 					}
+					status.setText("Launching...");
+					try {
+						ClientUtils.updateURLs();
+						new Game(a);
+						status.setText("OK!");
+					} catch (Throwable e) {
+						status.setText(e.toString());
+						status.setTextColor(Color.RED);
+						e.printStackTrace();
+						//e.getCause().printStackTrace();
+					}
 					
 				} catch (Exception e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
-					status.setText(e.getMessage());
+					status.setText(e.toString());
 					status.setTextColor(Color.RED);
 				}
 			}

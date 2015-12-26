@@ -28,14 +28,18 @@ public class Actions {
 		j.put("pass",password);
 		j.put("md5", Guard.getMD5(Actions.class.getProtectionDomain().getCodeSource().toString()));
 		j.put("version", Settings.version);
+		j.put("client", ClientUtils.getMcDir().getName());
+		Log.send(j.toJSONString());
 		return HTTPUtils.query(new URL(Settings.webpath + "/launcher.php"), j, new HashMap<String,String>());
 	}
 	
 	public static boolean checkMods(JSONArray in){
 		File[] f = new File(ClientUtils.getMcDir(),"mods").listFiles();
+		if(f == null || f.length <= 0) return false;
 		HashMap<String,File> local = new HashMap<String,File>();
-		for(File file : f){
+		for(int i = 0; i < f.length; i++){
 			//local.add(file);
+			File file = f[i];
 			local.put(file.getName(), file);
 		}
 			
@@ -55,15 +59,36 @@ public class Actions {
 			if(!new File(ClientUtils.getMcDir(),path).exists()) return false;
 			if(!local.containsKey(path) || Guard.getMD5(local.get(path).getAbsolutePath()) != (String)obj.get("md5")) return false;
 			
-				try{
-					local.remove(path);
-				}catch(Exception e){e.printStackTrace();}
-			}
+			try{
+				local.remove(path);
+			}catch(Exception e){e.printStackTrace();}
+		}
+		ArrayList<String> s = new ArrayList<String>();
 		for(Entry<String,File> e : local.entrySet()){
 			try{
-				if(e.getValue().isDirectory()) local.remove(e.getKey());
+				if(e.getValue().isDirectory()) s.add(e.getKey());
 			}catch(Exception ex){ex.printStackTrace();}
 		}
+		for(String key : s){
+			//local.get(key).delete();
+			//Log.send("Deleting");
+			local.remove(key);
+		}
+		
+		s = new ArrayList<String>();
+		
+		for(String k : local.keySet()){
+			local.get(k).delete();
+			s.add(k);//local.remove(k);
+			System.out.printf("Deleting %s\n", k);
+		}
+		
+		for(String key : s){
+			//local.get(key).delete();
+			//Log.send("Deleting");
+			local.remove(key);
+		}
+		
 		return (local.size() <= 0);
 	}
 

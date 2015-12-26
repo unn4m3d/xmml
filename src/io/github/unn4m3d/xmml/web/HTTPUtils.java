@@ -12,6 +12,7 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map.Entry;
 
 import net.launcher.Settings;
@@ -70,7 +71,7 @@ public class HTTPUtils {
 		return POST(addr,join(tok,"&"));
 	}
 	
-	public static String join(ArrayList<String> s, String sep){
+	public static String join(List<String> s, String sep){
 		String r = s.get(0);
 		for(int i = 1; i < s.size(); i++){
 			r += sep + s.get(i);
